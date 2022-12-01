@@ -1,1 +1,1 @@
-School-fullstackproject-spotify
+# React - TailwindCSS - Typescript
