@@ -18,6 +18,9 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
+
+  --toastify-color-light: #fff;
+  --toastify-color-dark: #131717;
 }
 
 html {
@@ -32,8 +35,6 @@ html {
   height: 100%;
   z-index: -1;
 }
-
-
 
 body {
   height: 100%;

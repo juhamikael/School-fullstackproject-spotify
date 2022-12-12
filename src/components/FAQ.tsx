@@ -1,5 +1,6 @@
 import { faqData } from "../data/data";
 import { useState } from "react";
+
 const FAQ = () => {
   const [faqItems] = useState(Object.values(faqData));
 
@@ -15,6 +16,21 @@ const FAQ = () => {
               </div>
               <div className="collapse-content bg-white/10 text-primary-content peer-checked:bg-white/5 peer-checked:text-secondary-content">
                 <p className="mt-4">{item.text}</p>
+
+                {item.text2 != "" ? (
+                  <div>
+                    <p>{item.text2}</p>
+                  </div>
+                ) : (
+                  ""
+                )}
+                {item.text3 != "" ? (
+                  <div>
+                    <p>{item.text3}</p>
+                  </div>
+                ) : (
+                  ""
+                )}
                 {item.link != "" ? (
                   <div>
                     <br />
@@ -29,21 +45,6 @@ const FAQ = () => {
                         {item.link}
                       </a>
                     </p>
-                  </div>
-                ) : (
-                  ""
-                )}
-
-                {item.text2 != "" ? (
-                  <div>
-                    <p>{item.text2}</p>
-                  </div>
-                ) : (
-                  ""
-                )}
-                {item.text3 != "" ? (
-                  <div>
-                    <p>{item.text3}</p>
                   </div>
                 ) : (
                   ""

@@ -1,5 +1,5 @@
 import TrackTable from "../components/TrackTable";
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 
 import {
   // Importing Util functions
@@ -12,8 +12,10 @@ import {
 import {
   // Importing API Controller functions
   HttpGetParams,
+  HttpGetUserProfileParams,
   httpGet,
   constructSearchUrl,
+  httpGetUser,
 } from "../utils/UtilizeApi";
 
 import {
@@ -21,18 +23,44 @@ import {
   IRecommendedParams,
   IAudioFeatures,
   ISpotifyTrack,
+  ITrack,
 } from "../interfaces";
 
-interface ISpotifyArtist {
-  id: string;
-  name: string;
-}
+import { getTracksFromDatabase, writeToDatabase } from "../utils/firebaseCRUD";
 
-interface IRecommendedTracks {
-  trackID: string;
-}
+import SpotifyPlayer from "../components/SpotifyPlayer";
+import { getFormattedDate } from "../utils/createPlaylistUtilFunctions";
 
-const FindRecommendations = (props: any) => {
+const getCurrentTrack = () => {
+  // check if current track exists, return true / false
+  const currentTrack = localStorage.getItem("currentTrack");
+  if (currentTrack) {
+    return true;
+  } else {
+    return false;
+  }
+};
+
+const checkUpdatePage = () => {
+    const updatePage = window.localStorage.getItem("UPDATEPAGE");
+    if (updatePage === "true") {
+        window.location.reload();
+        window.localStorage.setItem("UPDATEPAGE", "false");
+    }
+}
+const storeRandomSongsFromDatabase = () => {
+  getTracksFromDatabase().then((response: any) => {
+    const trackIds = response.map((track: { id: string }) => {
+      return track.id;
+    });
+    localStorage.setItem("randomSongs", JSON.stringify(response));
+    localStorage.setItem("randomTrackIDS", JSON.stringify(trackIds));
+  });
+};
+
+
+
+const FindRecommendations = () => {
   // States for multiple different types of data
   // Starts here
   const [audioFeatures, setAudioFeatures] = useState<IAudioFeatures>();
@@ -42,8 +70,15 @@ const FindRecommendations = (props: any) => {
   const [hasGenres, setHasGenres] = useState(false);
   const [validSpotifURI, setValidSpotifURI] = useState(false);
   const [fetchComplete, setFetchComplete] = useState(false);
-  const [recommendations, setRecommendations] = useState(![]);
-  // Ends here
+  const [recommendations, setRecommendations] = useState([]);
+  const [currentTrack, setCurrentTrack] = useState(getCurrentTrack());
+  const [randomIDs, setRandomIDs] = useState([]);
+  const [firstTimeUpdate, setFirstTimeUpdate] = useState(true);
+
+  useEffect(() => {
+      checkUpdatePage();
+  }, [firstTimeUpdate]);
+
 
   // Combining all the data into one object
   const trackDataObject = { ...trackData, ...audioFeatures, ...genreData };
@@ -53,14 +88,23 @@ const FindRecommendations = (props: any) => {
 
   // Define new HttpGetParams object where we're using only the market parameter
   const params: HttpGetParams = new HttpGetParams({ market: "FI" }, token);
+  const GET_CURRENT_USER = constructSearchUrl("me");
+
+  const GET_USER = () => {
+    // Fetch user ID from Spotify API and store it to local storage
+    const HTTP_GET: HttpGetUserProfileParams = new HttpGetUserProfileParams(
+      window.localStorage.getItem("token")
+    );
+    httpGetUser(GET_CURRENT_USER, HTTP_GET).then((response) => {
+      window.localStorage.setItem("user", JSON.stringify(response.data.id));
+    });
+  };
 
   // Function to fetch track data from Spotify API
-  const modifySearchQuery = (e: any) => {
+  const modifySearchQuery = (e: ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value; // Get value from input field
     let userInput: string = ""; // Define empty string to store user input
-    console.log(typeof trackData);
     if (trackData) {
-      // If trackData is defined, set userInput to searchQuery state
       userInput = searchQuery;
     }
     if (!value.startsWith("https://open.spotify.com/track/")) {
@@ -72,28 +116,66 @@ const FindRecommendations = (props: any) => {
       userInput = value.split("/")[4].split("?")[0];
     }
     // Set searchQuery state to userInput
+    window.localStorage.setItem("searchQuery", userInput);
     setSearchQuery(userInput);
   };
 
-  const searchTrackDataHandler = async (e: any) => {
+  const searchTrackDataHandler = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
-    // Get trackdata & audio features from Spotify API
-    await getAudioFeatures();
-    await getTrackData();
+    storeRandomSongsFromDatabase();
+    setFetchComplete(false); // Set fetchComplete state to false at the beginning of the function
+    setRandomIDs(JSON.parse(localStorage.getItem("randomTrackIDS") || "{}"));
+    await new Promise((r) => setTimeout(r, 1500)); // Wait 1.5 seconds before fetching data
+    setRecommendations([]); // Clear recommendations array
+    GET_USER(); // Fetch user ID from Spotify API
+    await getAudioFeatures(); // Fetch audio features from Spotify API
+    await getTrackData(); // Fetch track data from Spotify API
+    setFirstTimeUpdate(false);
+  };
+  const checkLocalStorage = () => {
+    // If searchQuery exists in local storage
+    if (window.localStorage.getItem("searchQuery")) {
+      // Set searchQuery state to value from local storage
+      setSearchQuery(window.localStorage.getItem("searchQuery") || "");
+      // Set validSpotifURI state to true so search button is enabled
+      setValidSpotifURI(true);
+    } else {
+      // Set searchQuery state to empty string
+      // and validSpotifURI state to false so search button is disabled
+      setSearchQuery("");
+      setValidSpotifURI(false);
+    }
   };
 
   useEffect(() => {
-    // If url is valid
-    if (validSpotifURI) {
-      // and fetch is not complete
-      if (!fetchComplete) {
-        // Fetch recommendations
-        getRecommendations().then((r) => {
-          console.log("Fetched recommendations");
-        });
+    // Getting "Current Track" from local storage which type is string
+    // Current track is the track that user is using to find recommendations
+    // Current track is same as searchQuery , searchQuery is track id and current track is track "artists - title"
+    checkLocalStorage();
+    setCurrentTrack(getCurrentTrack());
+  }, [currentTrack]);
+
+  useEffect(() => {
+    if (!trackData) {
+      // If trackData state is empty
+      return;
+    } else {
+      // If searchQuery state is stored in local storage, set searchQuery state to local storage value and set validSpotifURI to true
+      if (window.localStorage.getItem("searchQuery") !== null) {
+        setSearchQuery(window.localStorage.getItem("searchQuery") || "");
+        setValidSpotifURI(true);
+      }
+      // If url is valid
+      if (validSpotifURI) {
+        // and fetch is not complete
+        if (!fetchComplete) {
+          // Fetch recommendations
+          getRecommendations().then((r) => {
+            console.log("Fetched recommendations");
+          });
+        }
       }
     }
-    // Run useEffect when trackDataObject changes
   }, [trackDataObject]);
 
   const getAudioFeatures = async () => {
@@ -124,35 +206,66 @@ const FindRecommendations = (props: any) => {
     // Fetch track data from Spotify API and define search url
     // Track data & Artists data is needed to fetch same time for easier state control
     // This way we can use artistids from track to fetch genres which is required for recommendations
+    let searchQuery = window.localStorage.getItem("searchQuery");
 
     const trackQueryParams: string = constructSearchUrl(
       `tracks/${searchQuery}`
     );
+    console.log("TrackQuery",trackQueryParams);
+    // Get all artists from track and join them with comma
     httpGet(trackQueryParams, params).then((response) => {
+      const artists = response.data.artists
+        .map((track_artist: { name: string }) => track_artist.name)
+        .join(", ");
+
+      // Set track data state
       setTrackData({
-        artist_name: response.data.artists
-          .map((track_artist: any) => track_artist.name)
-          .join(", "),
-        artist_id: response.data.artists.map((artist: any) => artist.id),
+        artist_name: artists,
+        artist_id: response.data.artists.map(
+          (artist: { id: number }) => artist.id
+        ),
         artist_id_string: response.data.artists
-          .map((artist: any) => artist.id)
+          .map((artist: { id: number }) => artist.id)
           .join(","),
         track_title: response.data.name,
         track_length: getTrackLength(response.data.duration_ms),
         track_id: response.data.id,
         image_url: response.data.album.images[0].url,
       });
+
+      // Get artist ids from track and join them with comma
       const artistIDString: string = response.data.artists
-        .map((artist: any) => artist.id)
+        .map((artist: { id: number }) => artist.id)
         .join(",");
+
+      // Create new track object which is used to POST to Firebase
+      const track: ITrack = {
+        artist: artists,
+        trackName: response.data.name,
+        id: response.data.id,
+        date: getFormattedDate(new Date()),
+      };
+
+      writeToDatabase(track); // Send track data to Firebase
+
+      // Set current track to local storage
+      window.localStorage.setItem(
+        "currentTrack",
+        artists + " - " + response.data.name
+      );
+
       const ArtistQueryParams: string = constructSearchUrl(
         `artists?ids=${artistIDString}`
       );
+      // Fetch artist data from Spotify API
       httpGet(ArtistQueryParams, params).then((response) => {
+        // Get genres from artist data
         const genres = response.data.artists.map(
-          (artist: any) => artist.genres
+          (artist: { genres: string }) => artist.genres
         );
+        // Get random genres from genres array of arrays
         const randomGenres = getRandomGenres(genres);
+        // Set genres state
         setGenreData({ genres: randomGenres });
         if (randomGenres.length > 0) {
           // Some artists have no genres, so we need to check if there are any genres
@@ -178,6 +291,7 @@ const FindRecommendations = (props: any) => {
       } as IRecommendedParams,
       token
     );
+
     const queryParams: string = constructSearchUrl(`recommendations`); // Define search url for recommendations
     let trackQueryParams: string;
 
@@ -185,7 +299,8 @@ const FindRecommendations = (props: any) => {
       // Fetch recommendations from Spotify API
       .then((response) => {
         // Get multiple track ids from recommendations and store them to array
-        const recommendedTracks = response.data.tracks.map((track: any) =>
+        // @ts-ignore
+        const recommendedTracks = response.data.tracks.map((track) =>
           track.external_urls.spotify.split("/")[4].split("?")
         );
         // Map previously defined array to get track ids and make it one long string
@@ -198,16 +313,29 @@ const FindRecommendations = (props: any) => {
         );
         // Set fetchComplete state to true
         // Probably not required tho, might prevent infinite loop
-        setFetchComplete(true);
       })
       .then(() => {
         // Then fetch track data from Spotify API
         httpGet(trackQueryParams, params).then((response) => {
           setRecommendations(response.data.tracks);
+          // Store recommendations to local storage
+          localStorage.setItem(
+            "recommendations",
+            JSON.stringify(response.data.tracks)
+          );
           setFetchComplete(true);
+          window.localStorage.setItem("UPDATEPAGE", "true");
+
         });
       });
   };
+  const randomIDClickHandler = (id:any) => {
+      localStorage.setItem("trackId", id);
+      localStorage.setItem("searchQuery", id);
+      setValidSpotifURI(true);
+      setCurrentTrack(id);
+
+  }
 
   return (
     <>
@@ -237,9 +365,36 @@ const FindRecommendations = (props: any) => {
             </form>
           </div>
         </div>
-        <div className="mt-5">
-          <TrackTable tracks={recommendations} />
-        </div>
+
+
+        {!currentTrack ? (
+          <></>
+        ) : (
+          <>
+              <div>
+              <p className="flex justify-center text-2xl mt-5 mb-5">If you use random IDs, click search button twice to get correct recommendations</p>
+              {randomIDs.map((id) => (
+                <div className=" mt-2 flex justify-center">
+                    <button
+                      className="text-white hover:animate-pulse hover:text-cyan-300 "
+                      onClick={() => randomIDClickHandler(id)}> {id}
+                    </button>
+                </div>)
+                )}
+              </div>
+
+            <div className="flex justify-center mb-10 mt-10">
+              <SpotifyPlayer
+                trackID={searchQuery}
+                height={"80"}
+                width={"75"}
+              />
+            </div>
+            <div className="mt-5">
+              <TrackTable recommendations={recommendations} />
+            </div>
+          </>
+        )}
       </div>
     </>
   );

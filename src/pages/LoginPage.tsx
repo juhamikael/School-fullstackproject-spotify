@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 
-const LoginPage = (props) => {
-  const { location, loggedIn } = props;
+// It isn't best practice to use ":any" type but it is what it is, using it for now.
+const LoginPage = (props: { location: any, loggedIn: any}) => {
+  const { location, loggedIn, } = props;
   const [loggedInClicked, setLoggedInClicked] = useState(false);
 
   const login = () => {
@@ -11,6 +12,7 @@ const LoginPage = (props) => {
       window.location.href = "/recommendations";
     }
   };
+
 
   useEffect(() => {
     if (loggedInClicked) {

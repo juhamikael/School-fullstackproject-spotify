@@ -1,52 +1,81 @@
-import Spotify from "react-spotify-embed";
-import { useState } from "react";
-import { getTrackLength } from "../utils/fetchDataModifiers";
-import { faBookmark } from "@fortawesome/free-solid-svg-icons";
+
+import { useState, useEffect } from "react";
+
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+import { IBookmarks } from "../interfaces";
+
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBookmark, faTrash } from "@fortawesome/free-solid-svg-icons";
 
-interface IBookmarks {
-  id: string;
-  artists: string;
-  title: string;
-}
+import CustomToast from "./CustomToast";
+import SpotifyPlayer from "./SpotifyPlayer";
+import ScrollButtons from "./ScrollButtons";
 
-const TrackTable = ({ tracks }) => {
-  const [trackData, setTrackData] = useState();
-  if (trackData === undefined && tracks.length > 0) {
-    setTrackData(tracks);
-  }
+import { getTrackLength } from "../utils/fetchDataModifiers";
+import { addToBookmarkList } from "../utils/trackTableUtilFunctions";
 
-  const [bookmarkList, setBookmarkList] = useState({} as IBookmarks);
+const TrackTable = ({ recommendations }: any) => {
+  localStorage.setItem("UPDATEPAGE", "false");
+  const LOCAL_DATA = JSON.parse(
+    localStorage.getItem("recommendations") || "{}"
+  );
+  const [trackData, setTrackData] = useState(LOCAL_DATA || recommendations);
+  const [bookmarkList, setBookmarkList] = useState(
+    JSON.parse(localStorage.getItem("bookmarks") || "{}")
+  );
 
-  const addToBookmarkList = (track: any) => {
-    const artists = track.artists.map((artist) => artist.name).join(", ");
-    // Avoid duplicates
-    if (bookmarkList[track.id] === undefined) {
-      setBookmarkList({
-        ...bookmarkList,
-        [track.id]: {
-          id: track.id,
-          artists: artists,
-          title: track.name,
-        },
-      });
-    }else{
-      // React toast WIP
-    }
-
+  const redirectToPlaylist = () => {
+    window.location.href = "/playlists";
   };
 
+  // useEffect when updateState changes
+  useEffect(() => {
+    // if recommendations is empty, use localstorage
+    if (recommendations.length === 0) {
+      setTrackData(LOCAL_DATA);
+    } else {
+      setTrackData(recommendations);
+    }
+  }, [recommendations]);
+
+  const addToBookmarksHandler = (track: IBookmarks, bookmarks: any) => {
+    setBookmarkList(addToBookmarkList(track, bookmarks));
+  };
+
+  // UseEffect & Save bookmarkList to local storage
+  useEffect(() => {
+    localStorage.setItem("bookmarks", JSON.stringify(bookmarkList));
+  }, [bookmarkList]);
+
+  const removeFromBookmarkList = (track: any) => {
+    const id = track.id;
+    // @ts-ignore
+    if (bookmarkList[id] !== undefined) {
+      // @ts-ignore
+      const { [id]: value, ...rest } = bookmarkList;
+      // @ts-ignore
+      setBookmarkList(rest);
+      toast.info(`"${track.artists} - ${track.title}" removed from bookmarks!`);
+    }
+  };
+  const getLength = (obj: any) => {
+    return Object.keys(obj).length;
+  };
+
+  // @ts-ignore
   return (
     <div>
-      {console.log(bookmarkList)}
-      {trackData !== undefined && (
+      <CustomToast location="top-center" />
+      {getLength(trackData) > 0 && (
         <div className="flex justify-center">
-          <div className="grid lg:grid-cols-2 gap-10 sm:grid-cols-1">
-            <div className="grid-cols-1 lg:grid-cols-2 gap-2 grid w-max">
-              {trackData.map((track) => (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 w-max">
+              {trackData.map((track: any) => (
                 <div className="rounded-xl font-bold text-white text-center mt-5 bg-c-dark-1/50 border-2 border-white/30">
                   <div className="p-6 text-left">
-                    {track.artists.map((artist) => (
+                    {track.artists.map((artist: { name: string }) => (
                       <span className="text-white font-black text-[14px]">
                         {artist.name.replace(/[-,.]/g, "")}
                         {track.artists.indexOf(artist) <
@@ -56,10 +85,13 @@ const TrackTable = ({ tracks }) => {
                       </span>
                     ))}
                     <button
-                      className="float-right"
-                      onClick={() => addToBookmarkList(track)}
+                      className="float-right btn bg-transparent border-0 hover:bg-transparent"
+                      onClick={() => addToBookmarksHandler(track, bookmarkList)}
                     >
-                      <FontAwesomeIcon className="h-6 w-6" icon={faBookmark} />
+                      <FontAwesomeIcon
+                        className="h-6 w-6 text-cyan-300"
+                        icon={faBookmark}
+                      />
                     </button>
                     <br />
                     <span className="text-[12px] text-white/80">
@@ -69,26 +101,50 @@ const TrackTable = ({ tracks }) => {
                       {" "}
                       {getTrackLength(track.duration_ms)}
                     </p>
+
                     <div className="mt-5 bottom 0">
-                      <Spotify
-                        link={track.external_urls.spotify}
-                        className="w-11/12 border-2 border-white relative bottom-0"
-                        height={85}
+                      <SpotifyPlayer
+                        trackID={track.id}
+                        width={"100"}
+                        height={"80"}
                       />
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="rounded-xl font-bold text-white text-center mt-5 bg-c-dark-1/50 border-2 border-white/30 lg:w-7/12 sm:w-max">
+
+            <div className="rounded-xl font-bold text-white text-center mt-5 bg-c-dark-1/50 border-2 border-white/30 lg:w-full">
+              <div className="mt-5 text-xl">Bookmarks</div>
+              <button
+                className="btn w-3/6 bg-cyan-300 text-black mt-3 hover:bg-cyan-500 rounded-2xl"
+                onClick={redirectToPlaylist}
+              >
+                Create playlist
+              </button>
+
               <div className="mt-5">
                 {Object.keys(bookmarkList).map((key) => (
                   <div className=" border-b-2 border-white/20">
                     <div className="text-left ml-5 p-2 mt-1">
                       <div>
-                        <span className="text-cyan-300 font-black text-[14px]">
+                        <span className="text-white text-xs text-[14px]">
                           {bookmarkList[key].artists} -{" "}
                           {bookmarkList[key].title}
+                        </span>
+                        <span>
+                          <button
+                            // Delete bookmark
+                            className="mr-5 float-right bg-transparent border-0 hover:bg-transparent "
+                            onClick={() =>
+                              removeFromBookmarkList(bookmarkList[key])
+                            }
+                          >
+                            <FontAwesomeIcon
+                              className="h-4 w-4 text-cyan-300"
+                              icon={faTrash}
+                            />
+                          </button>
                         </span>
                       </div>
                     </div>
@@ -99,6 +155,9 @@ const TrackTable = ({ tracks }) => {
           </div>
         </div>
       )}
+      {getLength(trackData) !== 0 ? (
+        <ScrollButtons/>) : (<> </>)}
+
     </div>
   );
 };
