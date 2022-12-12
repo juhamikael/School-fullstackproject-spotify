@@ -1,5 +1,7 @@
 # React - TailwindCSS - Typescript
- -
+## https://tamkfullstack2022-spotify.web.app/
+If you want to try this web app, send me email: juhamikaeltuni@gmail.com
+
 # Preview (WIP)
 https://user-images.githubusercontent.com/83360104/205084521-004f48d1-12a2-457f-a6b5-d9ed992b6b4a.mp4
 
@@ -38,4 +40,5 @@ firebase deploy
 - Firebase	https://firebase.google.com/
 
 # Firebase.ts is removed from this repo
+
 
