@@ -53,5 +53,6 @@ firebase deploy
 - Firebase	https://firebase.google.com/
 
 # Firebase.ts is removed from this repo
+Location ./src/Firebase.ts
 
 
