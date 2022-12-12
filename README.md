@@ -9,8 +9,11 @@ https://developer.spotify.com/documentation/web-api/quick-start/
 
 You also need working Firebase connection with realtime database, setting up one is really straight forward, just follow Firebase own instructions
 
-# Preview (WIP, new video coming)
-https://user-images.githubusercontent.com/83360104/205084521-004f48d1-12a2-457f-a6b5-d9ed992b6b4a.mp4
+# Preview (WIP, Bugs to fix)
+
+https://user-images.githubusercontent.com/83360104/206942516-4f37691d-ae82-44e6-9a37-19b36a508d2f.mp4
+
+
 
 # Webapp "tutorial"
 https://scribehow.com/shared/Workflow__4fwxwZomSUqmadLaWqYSIw
