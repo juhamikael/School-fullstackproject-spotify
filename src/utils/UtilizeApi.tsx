@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getUserDataFromDatabase } from "./firebaseCRUD";
 import {
   IRecommendedParams,
   IFetchTrackParams,
@@ -17,13 +18,13 @@ class HttpGetUserProfileParams {
   constructor(public readonly token: string | null) {}
 }
 
-  class HttpGetParams {
-    // Constructor with readonly params and token {IRecommendedParams | IFetchTrackParams}
-    constructor(
-      public readonly params: IRecommendedParams | IFetchTrackParams,
-      public readonly token: string | null
-    ) {}
-  }
+class HttpGetParams {
+  // Constructor with readonly params and token {IRecommendedParams | IFetchTrackParams}
+  constructor(
+    public readonly params: IRecommendedParams | IFetchTrackParams,
+    public readonly token: string | null
+  ) {}
+}
 
 const httpGet = async (url: string, params: HttpGetParams) => {
   // HTTP Function for GET requests
@@ -41,7 +42,10 @@ const httpGetUser = async (url: string, params: HttpGetUserProfileParams) => {
   return axios.get(url, { headers: authHeaders });
 };
 
-const httpGetPlaylist = async (url: string, params: HttpGetUserProfileParams) => {
+const httpGetPlaylist = async (
+  url: string,
+  params: HttpGetUserProfileParams
+) => {
   const authHeaders = {
     Authorization: `Bearer ${params.token}`,
   };
@@ -65,6 +69,16 @@ const httpPostPlaylist = async (url: string, params: HttpPostParams) => {
   });
 };
 
+const GET_USER = async () => {
+  const GET_CURRENT_USER = constructSearchUrl("me");
+  // Fetch user ID from Spotify API and store it to local storage
+  const HTTP_GET: HttpGetUserProfileParams = new HttpGetUserProfileParams(
+    window.localStorage.getItem("token")
+  );
+  httpGetUser(GET_CURRENT_USER, HTTP_GET).then((response) => {
+    window.localStorage.setItem("user", JSON.stringify(response.data.id));
+  });
+};
 
 
 export {
@@ -76,4 +90,5 @@ export {
   httpGetPlaylist,
   httpPostPlaylist,
   constructSearchUrl,
+  GET_USER
 };

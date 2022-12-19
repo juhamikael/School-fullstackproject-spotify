@@ -1,76 +1,85 @@
-import {useState, useEffect} from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {storeUserDataInDatabase} from "../utils/firebaseCRUD";
 
-const NavBar = (props: any) => {
-    const [loggedInState, setLoggedInState] = useState(false);
+const NavBar = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    window.localStorage.getItem("loggedIn") === "true"
+  );
+  const navigate = useNavigate();
+
+  useEffect(() => {
     const checkLoggedStatus = () => {
-        const logged = window.localStorage.getItem("loggedIn");
-        const loggedBool = logged === "True";
-        setLoggedInState(loggedBool);
+      setIsLoggedIn(window.localStorage.getItem("loggedIn") === "true");
     };
+    checkLoggedStatus();
+    checkHowLongLoggedIn();
+  }, []);
 
-    useEffect(() => {
-        checkLoggedStatus();
-    }, [loggedInState]);
+const logout = () => {
+    storeUserDataInDatabase();
+    const logoutWindow = window.open(
+      "https://www.spotify.com/logout/",
+      "_blank"
+    );
+    setTimeout(() => {
+      logoutWindow?.close();
+      // Then, redirect back to login page
+      setIsLoggedIn(false);
+      navigate("/");
+    }, 1000);
+    // empty whole local storage
+    window.localStorage.clear();
+    window.localStorage.setItem("loggedIn", "false");
+    window.localStorage.setItem("token", "");
+    window.localStorage.setItem("user", "");
+    window.localStorage.setItem("userDataLoaded", "false");
+  };
 
-    const logout = () => {
-        window.localStorage.setItem("loggedIn", "False");
-        window.localStorage.setItem("token", "");
-        const logoutWindow = window.open("https://www.spotify.com/logout/", "_blank");
-        setTimeout(() => {
-            logoutWindow?.close();
-            // Then, redirect back to login page
-            window.location.href = "/";
-        }, 1000);
-    };
-    const redirect = () => {
-        if (loggedInState) {
-            window.location.href = "/recommendations";
-        } else {
-            window.location.href = "/";
-        }
-    };
-    const redirectPages = (page: string) => {
-        if (page === "playlists") {
-            window.location.href = "/playlists";
-        } else if (page === "about") {
-            window.location.href = "/about";
-        } else if (page === "home") {
-            window.location.href = "/recommendations";
-        }
-    };
+  const checkHowLongLoggedIn = () => {
+    const loggedInTime = window.localStorage.getItem("loggedInTime");
+    const currentTime = new Date().getTime();
+    if (loggedInTime) {
+      const timeDifference = currentTime - parseInt(loggedInTime);
+      if (timeDifference > 3600000) {
+        // Log user out
+        setIsLoggedIn(false);
+        storeUserDataInDatabase();
+        logout();
+        navigate("/");
+      }
+    }
+  };
 
-    return (
-      <div className="navbar bg-c-dark-2/20 border-b-2 border-white/20 ">
-          <div className="flex-none ">
+  return (
+    <div className="navbar bg-c-dark-2/20 border-b-2 border-white/20 ">
+      <div className="flex-none ">
+        <button
+          onClick={() => navigate("/")}
+          className="border-transparent flex-4 ml-4 neutral-focus hover:text-white"
+        >
+          <a className="font-virgil text-white hover:text-white border-transparent text-base ">
+            SPOTIFY RECOMMENDATIONS
+          </a>
+        </button>
+        <div>
+          {isLoggedIn ? (
+            <>
               <button
-                onClick={redirect}
-                className="border-transparent flex-4 ml-4 neutral-focus hover:text-white"
-              >
-                  <a className="font-virgil text-white hover:text-white border-transparent text-base ">
-                      SPOTIFY RECOMMENDATIONS
-                  </a>
-              </button>
-              <div>
-                  {loggedInState ? (
-                    <span>
-              <button
-                // Onclick redirect to about page
-                onClick={() => redirectPages("home")}
+                onClick={() => navigate("/")}
                 className="btn w-24 btn-square btn-ghost ml-5 hover:bg-white/5"
               >
                 Home
               </button>
               <button
-                // Onclick redirect to about page
-                onClick={() => redirectPages("playlists")}
+                onClick={() => navigate("/playlists")}
                 className="btn w-40 btn-square btn-ghost ml-5 hover:bg-white/5"
               >
                 Create Playlist
               </button>
               <span className="absolute right-0">
                 <button
-                  // Onclick redirect to about page
-                  onClick={() => redirectPages("about")}
+                  onClick={() => navigate("/about")}
                   className="btn btn-square btn-ghost w-20 ml-5 hover:bg-white/5 mr-10"
                 >
                   About
@@ -82,20 +91,19 @@ const NavBar = (props: any) => {
                   Logout
                 </button>
               </span>
-            </span>
-                  ) : (
-                    <button
-                      // Onclick redirect to about page
-                      onClick={() => redirectPages("about")}
-                      className="btn btn-square btn-ghost w-20 ml-5 hover:bg-white/5"
-                    >
-                        About
-                    </button>
-                  )}
-              </div>
-          </div>
+            </>
+          ) : (
+            <button
+              onClick={() => navigate("/about")}
+              className="btn btn-square btn-ghost w-20 ml-5 hover:bg-white/5"
+            >
+              About
+            </button>
+          )}
+        </div>
       </div>
-    );
+    </div>
+  );
 };
 
 export default NavBar;

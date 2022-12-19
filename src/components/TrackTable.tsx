@@ -16,7 +16,10 @@ import ScrollButtons from "./ScrollButtons";
 import { getTrackLength } from "../utils/fetchDataModifiers";
 import { addToBookmarkList } from "../utils/trackTableUtilFunctions";
 
+import { useNavigate } from "react-router-dom";
+
 const TrackTable = ({ recommendations }: any) => {
+  const navigate = useNavigate();
   localStorage.setItem("UPDATEPAGE", "false");
   const LOCAL_DATA = JSON.parse(
     localStorage.getItem("recommendations") || "{}"
@@ -27,7 +30,7 @@ const TrackTable = ({ recommendations }: any) => {
   );
 
   const redirectToPlaylist = () => {
-    window.location.href = "/playlists";
+    navigate("/playlists");
   };
 
   // useEffect when updateState changes

@@ -67,9 +67,9 @@ const trackIdClicked = (bookmark: IBookmarks) => {
 };
 
 const CreatePlaylistParams = () => {
-    // Get user id from local storage
-    const USER_ID = JSON.parse(window.localStorage.getItem("user") || "");
 
+    const USER_ID = JSON.parse(window.localStorage.getItem("user") || "");
+    
     // Get user access token from local storage
     const TOKEN = window.localStorage.getItem("token");
 
